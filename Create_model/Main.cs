@@ -19,15 +19,45 @@ namespace Create_model
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-
-            var res1=new FilteredElementCollector(doc)
-                //.OfClass(typeof(Wall))
-                //.Cast<Wall>()
-                .OfType<Wall>()
+           List<Level> listLevel= new FilteredElementCollector(doc)
+                .OfClass(typeof(Level))
+                .OfType<Level>()
                 .ToList();
+
+            Level level1 = listLevel
+                 .Where(x => x.Name.Equals("Уровень 1"))
+                 .FirstOrDefault();
             
+            Level level2 = listLevel
+                 .Where(x => x.Name.Equals("Уровень 2"))
+                 .FirstOrDefault();
+
+            double width = UnitUtils.ConvertToInternalUnits(10000, UnitTypeId.Millimeters);
+            double deth = UnitUtils.ConvertToInternalUnits(5000, UnitTypeId.Millimeters);
+            double dx=width/2;
+            double dy =deth / 2;
+
+            List<XYZ> points = new List<XYZ>();
+            points.Add(new XYZ(-dx, -dy,0));
+            points.Add(new XYZ(dx, -dy,0));
+            points.Add(new XYZ(dx, dy,0));
+            points.Add(new XYZ(-dx, dy,0));
+            points.Add(new XYZ(-dx, -dy,0));
+
+            List<Wall> walls = new List<Wall>();
+
+            Transaction transaction = new Transaction(doc,"Построекние стены");
+            transaction.Start();
+            for (int i = 0; i < 4; i++)
+            {
+                Line line = Line.CreateBound(points[i], points[i + 1]);
+                Wall wall=Wall.Create(doc, line,level1.Id,false);
+                walls.Add(wall);
+                wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE).Set(level2.Id);
+            }
 
 
+            transaction.Commit();   
 
 
             return Result.Succeeded;
