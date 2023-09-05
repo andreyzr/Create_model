@@ -33,9 +33,9 @@ namespace Create_model
                  .FirstOrDefault();
 
             double width = UnitUtils.ConvertToInternalUnits(10000, UnitTypeId.Millimeters);
-            double deth = UnitUtils.ConvertToInternalUnits(5000, UnitTypeId.Millimeters);
+            double length = UnitUtils.ConvertToInternalUnits(5000, UnitTypeId.Millimeters);
             double dx=width/2;
-            double dy =deth / 2;
+            double dy =length / 2;
 
             List<XYZ> points = new List<XYZ>();
             points.Add(new XYZ(-dx, -dy,0));
@@ -58,6 +58,15 @@ namespace Create_model
 
 
             transaction.Commit();   
+
+
+            return Result.Succeeded;
+        }
+
+        public static Result WallCreate (ExternalCommandData commandData,Level level1, Level level2, double width, double length )
+        {
+
+
 
 
             return Result.Succeeded;
