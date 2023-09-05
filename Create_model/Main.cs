@@ -124,7 +124,7 @@ namespace Create_model
             Application application = doc.Application;
             CurveArray CurveArray = new CurveArray();
             XYZ[] pointsRef=new XYZ[0];
-            i
+            int a = 0;
 
 
             for (int i = 0; i < 4; i += 2)
@@ -133,10 +133,11 @@ namespace Create_model
                 XYZ p1 = curve.Curve.GetEndPoint(0);
                 XYZ p2 = curve.Curve.GetEndPoint(1);
                 Line line = Line.CreateBound(p1 + points[i], p2 + points[i + 1]);
-                pointsRef.Append(p1 + points[x]);
+                pointsRef.Append(p1 + points[a]);
+                a += 2;
                 CurveArray.Append(line);
             }
-            ReferencePlane plane = doc.Create.NewReferencePlane(point1, point2);
+            ReferencePlane plane = doc.Create.NewReferencePlane(pointsRef[0], pointsRef[2]);
         }
         private void AddDoor(Document doc, Level level1, Wall wall)
         {
