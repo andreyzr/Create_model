@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Autodesk.Revit.ApplicationServices;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace Create_model
 {
@@ -24,21 +25,21 @@ namespace Create_model
             List<XYZ> points = new List<XYZ>();
 
 
-            Level level1 = GetLevel(doc,"Уровень 1");
-            Level level2 = GetLevel(doc,"Уровень 2");
+            Level level1 = GetLevel(doc, "Уровень 1");
+            Level level2 = GetLevel(doc, "Уровень 2");
 
 
             double width = UnitUtils.ConvertToInternalUnits(10000, UnitTypeId.Millimeters);
             double length = UnitUtils.ConvertToInternalUnits(5000, UnitTypeId.Millimeters);
-            double dx=width/2;
-            double dy =length / 2;
+            double dx = width / 2;
+            double dy = length / 2;
 
-        
-            points.Add(new XYZ(-dx, -dy,0));
-            points.Add(new XYZ(dx, -dy,0));
-            points.Add(new XYZ(dx, dy,0));
-            points.Add(new XYZ(-dx, dy,0));
-            points.Add(new XYZ(-dx, -dy,0));
+
+            points.Add(new XYZ(-dx, -dy, 0));
+            points.Add(new XYZ(dx, -dy, 0));
+            points.Add(new XYZ(dx, dy, 0));
+            points.Add(new XYZ(-dx, dy, 0));
+            points.Add(new XYZ(-dx, -dy, 0));
 
             Transaction transaction = new Transaction(doc, "Построекние стены");
             transaction.Start();
@@ -49,7 +50,7 @@ namespace Create_model
             AddWindows(doc, level1, walls[1]);
             AddWindows(doc, level1, walls[2]);
             AddWindows(doc, level1, walls[3]);
-            AddRoof1(doc, level2, walls);
+            AddRoof2(doc, level2, walls, uidoc);
 
             transaction.Commit();
 
@@ -57,52 +58,6 @@ namespace Create_model
         }
 
         private void AddRoof1(Document doc, Level level2, List<Wall> walls)
-        {
-            RoofType roofType=new FilteredElementCollector(doc)
-                .OfClass(typeof(RoofType))
-                .OfType<RoofType>()
-                .Where(x=>x.Name.Equals("Типовой - 400мм"))
-                .Where(x=>x.FamilyName.Equals("Базовая крыша"))
-                .FirstOrDefault();
-
-            double wallWight = walls[0].Width;
-            double dt = wallWight / 2;
-            List<XYZ> points = new List<XYZ>();
-            points.Add(new XYZ(-dt, -dt, 0));
-            points.Add(new XYZ(dt, -dt, 0));
-            points.Add(new XYZ(dt, dt, 0));
-            points.Add(new XYZ(-dt, dt, 0));
-            points.Add(new XYZ(-dt, -dt, 0));
-
-
-            Application application = doc.Application;
-            CurveArray footprint = application.Create.NewCurveArray();
-            for (int i = 0; i < 4; i++)
-            {
-                LocationCurve curve = walls[i].Location as LocationCurve;
-                XYZ p1 = curve.Curve.GetEndPoint(0);
-                XYZ p2 = curve.Curve.GetEndPoint(1);
-                Line line = Line.CreateBound(p1 + points[i], p2+points[i+1]);
-                footprint.Append(line);
-            }
-            ModelCurveArray footPrintToModelCurveMapping=new ModelCurveArray();
-            FootPrintRoof footPrintRoof=doc.Create.NewFootPrintRoof(footprint,level2,roofType,out footPrintToModelCurveMapping);
-            //ModelCurveArrayIterator iterator=footPrintToModelCurveMapping.ForwardIterator();
-            //iterator.Reset();
-            //while (iterator.MoveNext())
-            //{
-            //    ModelCurve modelCurve=iterator.Current as ModelCurve;
-            //    footPrintRoof.set_DefinesSlope(modelCurve, true);
-            //    footPrintRoof.set_SlopeAngle(modelCurve, 0.5);
-            //}
-
-            foreach ( ModelCurve m in footPrintToModelCurveMapping)
-            {
-                footPrintRoof.set_DefinesSlope(m, true);
-                footPrintRoof.set_SlopeAngle(m, 0.5);
-            }
-        }
-        private void AddRoof2(Document doc, Level level2, List<Wall> walls)
         {
             RoofType roofType = new FilteredElementCollector(doc)
                 .OfClass(typeof(RoofType))
@@ -122,26 +77,82 @@ namespace Create_model
 
 
             Application application = doc.Application;
-            CurveArray CurveArray = new CurveArray();
-            XYZ[] pointsRef=new XYZ[0];
-            int a = 0;
-
-
-            for (int i = 0; i < 4; i += 2)
+            CurveArray footprint = application.Create.NewCurveArray();
+            for (int i = 0; i < 4; i++)
             {
                 LocationCurve curve = walls[i].Location as LocationCurve;
                 XYZ p1 = curve.Curve.GetEndPoint(0);
                 XYZ p2 = curve.Curve.GetEndPoint(1);
                 Line line = Line.CreateBound(p1 + points[i], p2 + points[i + 1]);
-                pointsRef.Append(p1 + points[a]);
-                a += 2;
-                CurveArray.Append(line);
+                footprint.Append(line);
             }
-            ReferencePlane plane = doc.Create.NewReferencePlane(pointsRef[0], pointsRef[2]);
+            ModelCurveArray footPrintToModelCurveMapping = new ModelCurveArray();
+            FootPrintRoof footPrintRoof = doc.Create.NewFootPrintRoof(footprint, level2, roofType, out footPrintToModelCurveMapping);
+            //ModelCurveArrayIterator iterator=footPrintToModelCurveMapping.ForwardIterator();
+            //iterator.Reset();
+            //while (iterator.MoveNext())
+            //{
+            //    ModelCurve modelCurve=iterator.Current as ModelCurve;
+            //    footPrintRoof.set_DefinesSlope(modelCurve, true);
+            //    footPrintRoof.set_SlopeAngle(modelCurve, 0.5);
+            //}
+
+            foreach (ModelCurve m in footPrintToModelCurveMapping)
+            {
+                footPrintRoof.set_DefinesSlope(m, true);
+                footPrintRoof.set_SlopeAngle(m, 0.5);
+            }
+        }
+        private void AddRoof2(Document doc, Level level2, List<Wall> walls, UIDocument uidoc)
+        {
+            RoofType roofType = new FilteredElementCollector(doc)
+                .OfClass(typeof(RoofType))
+                .OfType<RoofType>()
+                .Where(x => x.Name.Equals("Типовой - 400мм"))
+                .Where(x => x.FamilyName.Equals("Базовая крыша"))
+                .FirstOrDefault();
+
+            double wallWight = walls[0].Width;
+            double dt = wallWight / 2;
+            List<XYZ> points = new List<XYZ>();
+
+            LocationCurve locationCurve1 = walls[0].Location as LocationCurve;
+            Curve curve1 = locationCurve1.Curve;
+            XYZ point1=curve1.GetEndPoint(0);
+
+            LocationCurve locationCurve2 = walls[3].Location as LocationCurve;
+            Curve curve2 = locationCurve2.Curve;
+            XYZ point2 = curve2.GetEndPoint(0);
+
+
+
+            Application application = doc.Application;
+            CurveArray curveArray = new CurveArray();
+
+
+
+            double pointX = ((point1 + point2) / 2).X;
+            double pointY = ((point1 + point2) / 2).Y;
+            double pointZ = (((point1 + point2) / 2).Z)+10;
+
+            XYZ pointHigh=new XYZ(pointX, pointY, pointZ);
+
+
+            Line line1 = Line.CreateBound(point1, pointHigh);
+            Line line2 = Line.CreateBound(pointHigh, point2);
+            curveArray.Append(line1);
+            curveArray.Append(line2);
+
+            ReferencePlane plane = doc.Create.NewReferencePlane(point1, point2, pointHigh, doc.ActiveView);
+            SketchPlane sp = SketchPlane.Create(doc, plane.Id);
+            uidoc.ActiveView.SketchPlane = sp;
+            uidoc.ActiveView.ShowActiveWorkPlane();
+
+            //doc.Create.NewExtrusionRoof(curveArray, plane, level2, roofType, 0, 40);
         }
         private void AddDoor(Document doc, Level level1, Wall wall)
         {
-            FamilySymbol doorType= new FilteredElementCollector(doc)
+            FamilySymbol doorType = new FilteredElementCollector(doc)
                 .OfClass(typeof(FamilySymbol))
                 .OfCategory(BuiltInCategory.OST_Doors)
                 .OfType<FamilySymbol>()
@@ -149,15 +160,15 @@ namespace Create_model
                 .Where(x => x.FamilyName.Equals("Одиночные-Щитовые"))
                 .FirstOrDefault();
 
-            if(!doorType.IsActive)
+            if (!doorType.IsActive)
                 doorType.Activate();
 
-            LocationCurve hostCurve= wall.Location as LocationCurve;
+            LocationCurve hostCurve = wall.Location as LocationCurve;
             XYZ point1 = hostCurve.Curve.GetEndPoint(0);
             XYZ point2 = hostCurve.Curve.GetEndPoint(1);
             XYZ point = (point1 + point2) / 2;
 
-            doc.Create.NewFamilyInstance(point, doorType,wall,level1,StructuralType.NonStructural);
+            doc.Create.NewFamilyInstance(point, doorType, wall, level1, StructuralType.NonStructural);
         }
         private void AddWindows(Document doc, Level level1, Wall wall)
         {
@@ -177,11 +188,11 @@ namespace Create_model
             XYZ point2 = hostCurve.Curve.GetEndPoint(1);
             XYZ pointOrigin = (point1 + point2) / 2;
 
-            double pointX= ((point1 + point2) / 2).X;
-            double pointY= ((point1 + point2) / 2).Y;
-            double pointZ= ((point1 + point2) / 2).Z+ UnitUtils.ConvertToInternalUnits(1500, UnitTypeId.Millimeters);
+            double pointX = ((point1 + point2) / 2).X;
+            double pointY = ((point1 + point2) / 2).Y;
+            double pointZ = ((point1 + point2) / 2).Z + UnitUtils.ConvertToInternalUnits(1500, UnitTypeId.Millimeters);
 
-           XYZ point = new XYZ(pointX, pointY, pointZ);
+            XYZ point = new XYZ(pointX, pointY, pointZ);
 
 
             doc.Create.NewFamilyInstance(point, windowsType, wall, level1, StructuralType.NonStructural);
@@ -200,7 +211,7 @@ namespace Create_model
 
             return level;
         }
-        public static List<Wall> WallCreate (Document doc, Level level1,List<XYZ> points, Level level2, double width, double length )
+        public static List<Wall> WallCreate(Document doc, Level level1, List<XYZ> points, Level level2, double width, double length)
         {
 
             List<Wall> walls = new List<Wall>();
@@ -214,6 +225,22 @@ namespace Create_model
             }
 
             return walls;
+        }
+
+        private XYZ CreatePoint(Wall wall, double dt, int n)
+        {
+            LocationCurve locationCurve = wall.Location as LocationCurve;
+            Curve curve = locationCurve.Curve;
+            XYZ _point = curve.GetEndPoint(n);
+
+            double pointX = _point.X;
+            double pointY = _point.Y;
+            double pointZ = _point.Z;
+
+            XYZ point = new XYZ(pointX, pointY, pointZ);
+
+
+            return point;
         }
     }
 }
